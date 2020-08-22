@@ -13,6 +13,7 @@ Firmware
 
 The firmware is based on [Mecrisp Forth](http://mecrisp.sourceforge.net/).
 Flashing firmware can be done using a communication program (minicom, picocom, etc):
+0. flash the Mecrisp Forth core (see note below),
 1. send `flash.forth`,
 2. send `turnkey.forth`,
 3. reset the device.
