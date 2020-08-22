@@ -2,8 +2,10 @@
 
 import argparse
 import datetime
+import queue
 import struct
 import syslog
+import threading
 import urllib.request
 import bluetooth._bluetooth as bluez
 
@@ -18,6 +20,7 @@ sensors = {}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-f", "--config-file", metavar="CONFIG-FILE", required=True)
+parser.add_argument("-d", "--db-url", metavar="URL", default="http://localhost:8086/write?db=home")
 args = parser.parse_args()
 with open(args.config_file, "rt") as f:
     for line in f:
@@ -79,10 +82,31 @@ def parse_packets(sock, count):
                 results.append(parse_beacon(packet[6:]))
     return [r for r in results if r]
 
-db_url = "http://localhost:8086/write?db=home"
-quarantine = {address: datetime.datetime(1900, 1, 1) for address in sensors}
-quarantine_period = datetime.timedelta(seconds=30)
+class DBWriterThread(threading.Thread):
+    def __init__(self, q, db_url):
+        threading.Thread.__init__(self)
+        self.q = q
+        self.db_url = db_url
 
+    def run(self):
+        batch = []
+        while True:
+            try:
+                batch.append(self.q.get(timeout=15))
+            except queue.Empty:
+                if batch:
+                    complete_name, _, _, _, _, location = batch[0]
+                    pm1_0 = int(sum(map(lambda r: r[1], batch)) / len(batch))
+                    pm2_5 = int(sum(map(lambda r: r[2], batch)) / len(batch))
+                    pm10  = int(sum(map(lambda r: r[3], batch)) / len(batch))
+                    rssi  = int(sum(map(lambda r: r[4], batch)) / len(batch))
+                    payload = "dust,location={},name={} pm1_0={},pm2_5={},pm10={},rssi={}".format(location, complete_name, pm1_0, pm2_5, pm10, rssi)
+                    urllib.request.urlopen(self.db_url, data=bytes(payload, "utf-8"))
+                    batch = []
+
+q = queue.Queue()
+t = DBWriterThread(q, db_url=args.db_url)
+t.start()
 try:
     sock = bluez.hci_open_dev(0)
     hci_enable_le_scan(sock)
@@ -95,17 +119,8 @@ try:
 
     while True:
         results = parse_packets(sock, 10)
-        #print(results)
         for address, complete_name, pm1_0, pm2_5, pm10, rssi in results:
-            now = datetime.datetime.now()
-            if quarantine[address] + quarantine_period < now:
-                location = sensors[address]
-                payload = "dust,location={},name={} pm1_0={},pm2_5={},pm10={},rssi={}".format(location, complete_name, pm1_0, pm2_5, pm10, rssi)
-                #print(db_url, payload)
-                urllib.request.urlopen(db_url, data=bytes(payload, "utf-8"))
-                quarantine[address] = now
-            else:
-                pass
-                #syslog.syslog(f"skipping {quarantine[address]}")
+            #syslog.syslog("address={}, complete_name={}, pm1_0={}, pm2_5={}, pm10={}, rssi={}".format(address, complete_name, pm1_0, pm2_5, pm10, rssi))
+            q.put((complete_name, pm1_0, pm2_5, pm10, rssi, sensors[address]))
 except KeyboardInterrupt:
     pass
