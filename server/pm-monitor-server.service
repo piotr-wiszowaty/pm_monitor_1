@@ -1,0 +1,13 @@
+[Unit]
+Description=PM Sensor Server
+After=multi-user.target
+
+[Service]
+ExecStart=/home/p/pm_monitor/pm_monitor_server.py -f /home/p/pm_monitor/sensors.conf
+Type=simple
+Restart=on-abort
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
