@@ -36,8 +36,11 @@
 : ble-aok-prompt ( -- )
   s" AOK" usart1-expect ble-prompt ;
 
+: ble-reset-off ( -- )
+  $00000004 GPIOB_BSRR ! ;
+
 : ble-on ( -- )
-  $00000004 GPIOB_BSRR !
+  ble-reset-off
   100 ms wait
   s" %REBOOT%" usart1-expect
   s" $$$" usart1-tx-str
@@ -131,6 +134,21 @@
     break @ sensor-error @ or if leave then
   loop
   sensor-off ;
+
+: rn4871-isupdate ( -- )
+  $38000000 NVIC_ICER !
+  USART_CR1_RXFNEIE USART1_CR1 bic!
+  USART_CR1_UE USART2_CR1 bic!
+  USART_CR3_RTSE USART_CR3_CTSE or USART2_CR3 bic!
+  PCLK 115200 / USART2_BRR !
+  USART_CR1_UE USART2_CR1 bis!
+  $00020000 GPIOB_BSRR !
+  led-y-on
+  ble-off
+  100 ms wait
+  ble-unreset
+  led-r-on
+  uart-pass-through ;
 
 : main ( -- )
   0 break !

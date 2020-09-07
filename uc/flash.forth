@@ -13,5 +13,6 @@ compiletoflash
 #include misc.forth
 #include usart.forth
 #include timers.forth
+#include uart_pass_through.forth
 
 compiletoram
