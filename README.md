@@ -11,10 +11,10 @@ the incoming BLE reports and stores them in an [InfluxDB](https://www.influxdata
 Firmware
 --------
 
-The firmware is based on [Mecrisp Forth](http://mecrisp.sourceforge.net/).
+The firmware is based on [Mecrisp-Stellaris Forth](http://mecrisp.sourceforge.net/).
 Flashing firmware can be done using a communication program (minicom, picocom, etc):
 
-0. flash the Mecrisp Forth core (see note below),
+0. flash the Mecrisp-Stellaris Forth core (see note below),
 1. send `flash.forth`,
 2. send `turnkey.forth`,
 3. reset the device.
@@ -22,4 +22,4 @@ Flashing firmware can be done using a communication program (minicom, picocom, e
 The microcontroller register and bit field constants can be downloaded from [here](https://github.com/piotr-wiszowaty/comfoh).
 
 Note that to utilize hardware flow control (as in `uc/term.sh`) you need to enable USART2 RTS/CTS
-lines in the Mecrisp Forth core.
+lines in the Mecrisp-Stellaris Forth core.
